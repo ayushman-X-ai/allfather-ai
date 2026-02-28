@@ -1,0 +1,31 @@
+name: ALLFATHER Trading Agent
+
+on:
+  schedule:
+    - cron: "*/5 * * * *"     # every 5 minutes
+  workflow_dispatch:          # manual run button
+
+jobs:
+  run-allfather:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install dependencies
+        run: |
+          pip install requests
+
+      - name: Run ALLFATHER
+        env:
+          TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+          TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
+          TWELVE_DATA_API_KEY: ${{ secrets.TWELVE_DATA_API_KEY }}
+        run: |
+          python run.py
