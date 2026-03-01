@@ -3,6 +3,7 @@
 import os
 import requests
 
+from data.cache import load_cache, save_cache
 from telegram.commands import handle_command
 
 BOT_TOKEN = os.getenv("TELEGRAM_BOT_TOKEN")
@@ -25,7 +26,7 @@ def send_message(text):
 
 def get_updates(offset=None):
     """
-    Fetch Telegram updates.
+    Fetch Telegram updates starting from a specific offset.
     """
     url = f"{BASE_URL}/getUpdates"
     params = {"timeout": 30}
@@ -39,17 +40,22 @@ def get_updates(offset=None):
 def listen_for_commands():
     """
     Listen for Telegram commands.
-    Only reacts to messages that START with '/'.
-    Everything else is ignored silently.
+    Each command is processed ONLY ONCE.
+    Non-command messages are ignored silently.
     """
-    offset = None
+    cache = load_cache()
+    offset = cache.get("telegram_offset")
+
     updates = get_updates(offset)
 
-    if "result" not in updates:
+    if "result" not in updates or not updates["result"]:
         return
 
     for update in updates["result"]:
-        offset = update["update_id"] + 1
+        update_id = update.get("update_id")
+
+        # 🔑 Remember the last handled update
+        cache["telegram_offset"] = update_id + 1
 
         message = update.get("message")
         if not message:
@@ -59,10 +65,11 @@ def listen_for_commands():
         if not text:
             continue
 
-        # ✅ IMPORTANT FIX:
-        # Ignore anything that is NOT a command
+        # ✅ Ignore anything that is NOT a command
         if not text.startswith("/"):
             continue
 
         response = handle_command(text.strip())
         send_message(response)
+
+    save_cache(cache)
